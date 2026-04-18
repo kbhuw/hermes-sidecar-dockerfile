@@ -38,7 +38,7 @@ if [ -z "$API_SERVER_KEY" ]; then
 fi
 
 echo "[start.sh] Starting Hermes gateway on 127.0.0.1:${API_SERVER_PORT} (api_server enabled)"
-hermes gateway &
+hermes gateway run &
 HERMES_PID=$!
 
 trap 'kill $HERMES_PID 2>/dev/null || true' EXIT
