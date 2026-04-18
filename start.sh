@@ -28,9 +28,37 @@ source "${INSTALL_DIR}/.venv/bin/activate"
 mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home}
 
 [ -f "$HERMES_HOME/.env" ] || cp "$INSTALL_DIR/.env.example" "$HERMES_HOME/.env"
-[ -f "$HERMES_HOME/config.yaml" ] || cp "$INSTALL_DIR/cli-config.yaml.example" "$HERMES_HOME/config.yaml"
 [ -f "$HERMES_HOME/SOUL.md" ] || cp "$INSTALL_DIR/docker/SOUL.md" "$HERMES_HOME/SOUL.md"
 [ -d "$INSTALL_DIR/skills" ] && python3 "$INSTALL_DIR/tools/skills_sync.py" || true
+
+# Template config.yaml from env vars on every boot so Railway env vars are
+# the single source of truth for provider/model selection.
+HERMES_MODEL_DEFAULT="${HERMES_MODEL:-gpt-4o-mini}"
+if [ -n "$OPENAI_API_KEY" ] && [ -z "$OPENROUTER_API_KEY" ]; then
+    OPENAI_BASE_URL_DEFAULT="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+    cat > "$HERMES_HOME/config.yaml" <<EOF
+model:
+  default: "${HERMES_MODEL_DEFAULT}"
+  provider: "custom"
+  base_url: "${OPENAI_BASE_URL_DEFAULT}"
+  api_mode: "chat_completions"
+
+terminal:
+  backend: "local"
+  cwd: "."
+  timeout: 180
+
+agent:
+  max_turns: 30
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+EOF
+    echo "[start.sh] Wrote config.yaml for custom OpenAI endpoint (model=${HERMES_MODEL_DEFAULT})"
+else
+    [ -f "$HERMES_HOME/config.yaml" ] || cp "$INSTALL_DIR/cli-config.yaml.example" "$HERMES_HOME/config.yaml"
+fi
 
 if [ -z "$API_SERVER_KEY" ]; then
     echo "FATAL: API_SERVER_KEY must be set"
